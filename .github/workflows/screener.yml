@@ -1,0 +1,61 @@
+name: Crypto & xStock Screener (every 8 hours)
+
+on:
+  schedule:
+    # Runs at 00:00, 08:00, and 16:00 UTC every day.
+    # Note: GitHub's scheduler is not perfectly precise - actual
+    # start time can be delayed several minutes during high load.
+    - cron: '0 0,8,16 * * *'
+  workflow_dispatch:
+    # Lets you manually trigger a run anytime from the GitHub Actions tab,
+    # useful for testing without waiting for the schedule.
+
+jobs:
+  run-screeners:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120   # xStock runs can be slow on CoinGecko's free tier - generous ceiling
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create reports folder
+        run: mkdir -p reports
+
+      - name: Run crypto bullish screener
+        run: python crypto_bullish.py
+        continue-on-error: true   # one script failing shouldn't stop the others
+
+      - name: Run crypto reverse screener
+        run: python crypto_reverse.py
+        continue-on-error: true
+
+      - name: Run xStock bullish screener
+        run: python xstock_bullish.py
+        continue-on-error: true
+
+      - name: Run xStock reverse screener
+        run: python xstock_reverse.py
+        continue-on-error: true
+
+      - name: Email reports
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+        run: python send_email.py
+
+      - name: Upload reports as workflow artifact (backup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: screener-reports-${{ github.run_id }}
+          path: reports/
+          retention-days: 14
