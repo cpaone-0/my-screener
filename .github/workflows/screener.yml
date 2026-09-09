@@ -2,10 +2,16 @@ name: Crypto & xStock Screener (every 8 hours)
 
 on:
   schedule:
-    # Runs at 00:00, 08:00, and 16:00 UTC every day.
-    # Note: GitHub's scheduler is not perfectly precise - actual
-    # start time can be delayed several minutes during high load.
-    - cron: '0 0,8,16 * * *'
+    # Runs at 8:00 AM, 4:00 PM, and midnight - Philippine time (Asia/Manila),
+    # specified directly via GitHub's native per-schedule timezone field
+    # (added March 2026) - no manual UTC conversion needed.
+    #
+    # Offset 5 minutes past the hour on purpose: GitHub's own docs warn
+    # that the top of every hour is the highest-load window for scheduled
+    # runs and the most likely to be delayed - :05 avoids that specific
+    # peak. Some drift (a few minutes) is still normal and expected.
+    - cron: '5 8,16,0 * * *'
+      timezone: 'Asia/Manila'
   workflow_dispatch:
     # Lets you manually trigger a run anytime from the GitHub Actions tab,
     # useful for testing without waiting for the schedule.
